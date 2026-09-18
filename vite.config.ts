@@ -2,6 +2,7 @@ import type {UserConfig} from 'vite'
 
 import babelPlugin from '@rolldown/plugin-babel'
 import reactPlugin, {reactCompilerPreset} from '@vitejs/plugin-react'
+import addMonacoLanguagesPlugin from 'vite-plugin-add-monaco-languages'
 import libIntermediatePlugin from 'vite-plugin-lib-intermediate'
 import omitMonacoLanguagesPlugin from 'vite-plugin-omit-monaco-languages'
 import overrideMonacoThemesPlugin from 'vite-plugin-override-monaco-themes'
@@ -23,6 +24,28 @@ const config: UserConfig = {
         },
       },
     }),
+    addMonacoLanguagesPlugin({
+      languages: [
+        {
+          id: 'logsql',
+          aliases: ['LogsQL', 'logsql'],
+          extensions: ['.logsql'],
+          module: 'monaco-language-logsql',
+        },
+        {
+          id: 'metricsql',
+          aliases: ['MetricsQL', 'metricsql'],
+          extensions: ['.metricsql'],
+          module: 'monaco-language-metricsql',
+        },
+        {
+          id: 'clank',
+          aliases: ['Clank', 'clank'],
+          extensions: ['.clank'],
+          module: 'monaco-language-clank',
+        },
+      ],
+    }),
     omitMonacoLanguagesPlugin({
       languages: [
         'abap',
@@ -33,6 +56,11 @@ const config: UserConfig = {
       ],
     }),
     libIntermediatePlugin({
+      codeSplitting: true,
+      cssGroups: [{
+        name: 'monaco',
+        include: /^(?:editor|monaco)-.*\.css$/u,
+      }],
       bundleDependencies: [
         '@monaco-editor/react',
         'antimono',

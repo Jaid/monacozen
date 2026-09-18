@@ -1,0 +1,24 @@
+{
+  "name": "monaco-language-metricsql",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Monarch syntax highlighting and editor configuration for metricsql",
+  "funding": "https://github.com/sponsors/Jaid",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jaid/monacozen.git",
+    "directory": "packages/monaco-language-metricsql"
+  },
+  "main": "src/main.ts",
+  "scripts": {
+    "test": "bun test ./test"
+  },
+  "peerDependencies": {
+    "monaco-editor": "^0.56.0"
+  },
+  "devDependencies": {
+    "monaco-editor": "0.56.0",
+    "@types/bun": "1.4.2"
+  }
+}

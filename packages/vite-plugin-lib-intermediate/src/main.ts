@@ -1,6 +1,7 @@
 import type {Plugin, UserConfig} from 'vite'
 
-import {join} from 'node:path'
+import {createHash} from 'node:crypto'
+import {dirname, join, posix, relative} from 'node:path'
 
 import fs from 'fs-extra'
 
@@ -12,6 +13,11 @@ export type VendoredDeclaration = {
 
 export type VitePluginLibIntermediateOptions = {
   bundleDependencies?: ReadonlyArray<string>
+  codeSplitting?: boolean
+  cssGroups?: ReadonlyArray<{
+    include: RegExp
+    name: string
+  }>
   declarationTsconfig?: string
   entry?: string
   outputFolder?: string
@@ -27,6 +33,11 @@ type PackageJson = {
 
 const defaults = {
   bundleDependencies: [] as ReadonlyArray<string>,
+  codeSplitting: false,
+  cssGroups: [] as ReadonlyArray<{
+    include: RegExp
+    name: string
+  }>,
   declarationTsconfig: 'tsconfig.intermediate.json',
   entry: 'src/main.tsx',
   outputFolder: 'out/intermediate',
@@ -48,6 +59,9 @@ const removeBundledDependencies = (packageJson: PackageJson, bundledDependencies
     for (const dependency of bundledDependencies) {
       delete dependencies[dependency]
     }
+    if (!Object.keys(dependencies).length) {
+      delete packageJson[field]
+    }
   }
 }
 const copyIfExists = async (source: string, target: string) => {
@@ -55,36 +69,32 @@ const copyIfExists = async (source: string, target: string) => {
     await fs.copy(source, target)
   }
 }
-const prepareRuntimeForBuildLib = async (outputFolder: string) => {
-  const sourceFolder = join(outputFolder, 'src')
-  const runtimeFile = join(sourceFolder, 'main.js')
-  const sourceFiles = await fs.readdir(sourceFolder)
-  const cssFiles = sourceFiles.filter(file => file.endsWith('.css'))
-  let runtime = await fs.readFile(runtimeFile, 'utf8')
-  runtime = runtime.replaceAll('../assets/', './assets/')
-  if (cssFiles.length) {
-    const cssImports = cssFiles.map(file => `import './src/${file}';`).join('\n')
-    runtime = `${cssImports}\n${runtime}`
-  }
-  await fs.writeFile(runtimeFile, runtime)
-}
 const vendorDeclarations = async (outputFolder: string, declarations: ReadonlyArray<VendoredDeclaration>) => {
   if (!declarations.length) {
     return
   }
-  const mainDeclarationFile = join(outputFolder, 'src', 'main.d.ts')
-  let mainDeclaration = await fs.readFile(mainDeclarationFile, 'utf8')
-  await Promise.all(declarations.flatMap(declaration => {
-    const moduleTarget = `./${declaration.output.replace(/\.d\.ts$/u, '.js')}`
-    mainDeclaration = mainDeclaration
-      .replaceAll(`'${declaration.module}'`, () => `'${moduleTarget}'`)
-      .replaceAll(`"${declaration.module}"`, () => `"${moduleTarget}"`)
-    return [
-      fs.copy(declaration.source, join(outputFolder, 'src', declaration.output)),
+  const sourceFolder = join(outputFolder, 'src')
+  const files = await fs.readdir(sourceFolder, {
+    recursive: true,
+    encoding: 'utf8',
+  })
+  const declarationFiles = files.filter(file => file.endsWith('.d.ts'))
+  for (const declaration of declarations) {
+    for (const file of declarationFiles) {
+      const target = join(sourceFolder, file)
+      const importedPath = relative(dirname(target), join(sourceFolder, declaration.output)).replaceAll('\\', '/').replace(/\.d\.ts$/u, '.js')
+      const moduleTarget = importedPath.startsWith('.') ? importedPath : `./${importedPath}`
+      let text = await fs.readFile(target, 'utf8')
+      for (const quote of ["'", '"']) {
+        text = text.replaceAll(quote + declaration.module + quote, () => quote + moduleTarget + quote)
+      }
+      await fs.writeFile(target, text)
+    }
+    await Promise.all([
+      fs.copy(declaration.source, join(sourceFolder, declaration.output)),
       fs.copy(declaration.source, join(outputFolder, declaration.output)),
-    ]
-  }))
-  await fs.writeFile(mainDeclarationFile, mainDeclaration)
+    ])
+  }
 }
 const vitePluginLibIntermediate = (options: VitePluginLibIntermediateOptions = {}): Plugin => {
   const resolvedOptions = {
@@ -108,25 +118,79 @@ const vitePluginLibIntermediate = (options: VitePluginLibIntermediateOptions = {
         build: {
           assetsInlineLimit: Number.POSITIVE_INFINITY,
           copyPublicDir: false,
+          cssCodeSplit: resolvedOptions.codeSplitting,
           emptyOutDir: true,
           lib: {
             entry: resolvedOptions.entry,
             formats: ['es'],
           },
-          minify: false,
+          minify: true,
+          target: 'esnext',
           outDir: resolvedOptions.outputFolder,
           rolldownOptions: {
             external: id => dependencyPattern.test(id),
             output: {
-              assetFileNames: 'src/[name][extname]',
-              chunkFileNames: 'src/[name].js',
-              codeSplitting: false,
+              assetFileNames: 'assets/[name]-[hash][extname]',
+              chunkFileNames: 'assets/[name]-[hash].js',
+              codeSplitting: resolvedOptions.codeSplitting,
               entryFileNames: 'src/main.js',
             },
           },
         },
       }
       return config
+    },
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        for (const group of resolvedOptions.cssGroups) {
+          const assets = Object.values(bundle).filter(asset => asset.type === 'asset').filter(asset => asset.fileName.endsWith('.css') && group.include.test(posix.basename(asset.fileName)))
+          if (!assets.length) {
+            continue
+          }
+          const content = assets.map(asset => {
+            return typeof asset.source === 'string' ? asset.source : Buffer.from(asset.source).toString('utf8')
+          }).join('\n')
+          const hash = createHash('sha256').update(content).digest('hex').slice(0, 8)
+          const fileName = `assets/${group.name}-${hash}.css`
+          const originals = new Set(assets.map(asset => asset.fileName))
+          this.emitFile({
+            type: 'asset',
+            fileName,
+            source: content,
+          })
+          for (const original of originals) {
+            delete bundle[original]
+          }
+          for (const chunk of Object.values(bundle)) {
+            if (chunk.type !== 'chunk') {
+              continue
+            }
+            const metadata = (chunk as typeof chunk & {viteMetadata?: {importedCss: Set<string>}}).viteMetadata
+            if (!metadata) {
+              continue
+            }
+            metadata.importedCss = new Set([...metadata.importedCss].map(file => {
+              return originals.has(file) ? fileName : file
+            }))
+          }
+        }
+        // Keep styles attached to their owning chunks, not the public entry.
+        // Consumer bundlers then load each stylesheet with its lazy JavaScript chunk.
+        for (const chunk of Object.values(bundle)) {
+          if (chunk.type !== 'chunk') {
+            continue
+          }
+          const metadata = (chunk as typeof chunk & {viteMetadata?: {importedCss: Set<string>}}).viteMetadata
+          const imports = [...metadata?.importedCss ?? []].map(file => {
+            const path = posix.relative(posix.dirname(chunk.fileName), file)
+            return `import ${JSON.stringify(path.startsWith('.') ? path : `./${path}`)};`
+          })
+          if (imports.length) {
+            chunk.code = `${imports.join('\n')}\n${chunk.code}`
+          }
+        }
+      },
     },
     async closeBundle() {
       const declarationBuild = Bun.spawn(['bun', 'x', 'tsc', '--project', resolvedOptions.declarationTsconfig], {
@@ -136,16 +200,13 @@ const vitePluginLibIntermediate = (options: VitePluginLibIntermediateOptions = {
       if (await declarationBuild.exited !== 0) {
         throw new Error('Declaration build failed.')
       }
-      await Promise.all([
-        prepareRuntimeForBuildLib(resolvedOptions.outputFolder),
-        vendorDeclarations(resolvedOptions.outputFolder, resolvedOptions.vendoredDeclarations),
-      ])
+      await vendorDeclarations(resolvedOptions.outputFolder, resolvedOptions.vendoredDeclarations)
       const packageJson = await fs.readJson('package.json') as PackageJson
       removeBundledDependencies(packageJson, bundledDependencies)
       packageJson.exports = {
         '.': {
-          default: './src/entry.ts',
           types: './src/main.d.ts',
+          default: './src/entry.ts',
         },
       }
       await Promise.all([

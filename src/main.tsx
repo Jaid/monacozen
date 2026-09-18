@@ -1,90 +1,33 @@
-import type {editor} from 'monaco-editor/editor/editor.api'
-import type {ReactNode} from 'react'
+import type {DummyEditorProps, MonacoEditorProps, MonacozenProps, SwitchableEditorProps} from './types.ts'
+import type {JSX} from 'react'
 
-import 'antimono/css/antimono-static.css'
+import {useState} from 'react'
 
-import {loader, Editor as MonacoEditor} from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
+import DummyEditor from './components/DummyEditor.tsx'
+import MonacoEditor from './components/MonacoEditor.tsx'
 
-export type MonacozenProps = Omit<MonacoEditorProps, 'options' | 'theme'> & {
-  dark?: boolean
-  font?: 'antimono' | 'dense' | 'mono'
-  options?: Omit<MonacoOptions, 'disableMonospaceOptimizations' | 'fontFamily'>
-}
+export {default as DummyEditor} from './components/DummyEditor.tsx'
+export type {DummyEditorProps, EditorFont, MonacoApi, MonacoEditorProps, MonacoOptions, MonacozenProps, SwitchableEditorProps} from './types.ts'
 
-type Monaco = typeof import('monaco-editor/editor/editor.api')
-type MonacoOptions = editor.IStandaloneEditorConstructionOptions
-type MonacoEditorProps = {
-  beforeMount?: (monaco: Monaco) => void
-  className?: string
-  defaultLanguage?: string
-  defaultPath?: string
-  defaultValue?: string
-  height?: number | string
-  keepCurrentModel?: boolean
-  language?: string
-  line?: number
-  loading?: ReactNode
-  onChange?: (value: string | undefined, event: editor.IModelContentChangedEvent) => void
-  onMount?: (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => void
-  onValidate?: (markers: Array<editor.IMarker>) => void
-  options?: MonacoOptions
-  overrideServices?: editor.IEditorOverrideServices
-  path?: string
-  saveViewState?: boolean
-  theme?: string
-  value?: string
-  width?: number | string
-  wrapperProps?: object
-}
-
-const defaultOptions = {
-  accessibilitySupport: 'off',
-  contextmenu: true,
-  dragAndDrop: false,
-  folding: false,
-  fontSize: 14,
-  guides: {indentation: false},
-  largeFileOptimizations: false,
-  lineHeight: 16,
-  lineNumbers: 'off',
-  minimap: {enabled: false},
-  overviewRulerBorder: false,
-  renderControlCharacters: true,
-  renderLineHighlight: 'none',
-  renderWhitespace: 'trailing',
-  scrollbar: {
-    horizontal: 'auto',
-    vertical: 'auto',
-  },
-  stickyScroll: {enabled: false},
-  tabSize: 2,
-  wordWrap: 'on',
-} satisfies MonacoOptions
-const fontOptions = {
-  antimono: {
-    disableMonospaceOptimizations: true,
-    fontFamily: 'Antimono',
-  },
-  dense: {
-    disableMonospaceOptimizations: true,
-    fontFamily: 'sans-serif',
-  },
-  mono: {
-    disableMonospaceOptimizations: false,
-    fontFamily: 'monospace',
-  },
-} satisfies Record<NonNullable<MonacozenProps['font']>, Pick<MonacoOptions, 'disableMonospaceOptimizations' | 'fontFamily'>>
-loader.config({monaco})
-const Monacozen = ({dark = true, font = 'antimono', options, ...props}: MonacozenProps) => {
+function Monacozen(props: DummyEditorProps & {monaco: false}): JSX.Element
+function Monacozen(props: MonacoEditorProps): JSX.Element
+function Monacozen(props: SwitchableEditorProps): JSX.Element
+function Monacozen(props: MonacozenProps | SwitchableEditorProps): JSX.Element {
+  const [defaultValue, setDefaultValue] = useState(props.defaultValue ?? '')
+  if (props.monaco === false) {
+    const {monaco, beforeMount, defaultLanguage, defaultPath, keepCurrentModel, language, line, loading, onValidate, overrideServices, path, saveViewState, ...dummyProps} = props as DummyEditorProps & Partial<Omit<MonacoEditorProps, 'monaco' | 'onChange' | 'onMount'>> & {monaco: false}
+    return <DummyEditor
+      {...dummyProps} defaultValue={defaultValue} onChange={(value, event) => {
+        setDefaultValue(value)
+        props.onChange?.(value, event)
+      }}
+    />
+  }
   return <MonacoEditor
-    {...props}
-    options={{
-      ...defaultOptions,
-      ...options,
-      ...fontOptions[font],
+    {...props} defaultValue={defaultValue} monaco={props.monaco} onChange={(value, event) => {
+      setDefaultValue(value ?? '')
+      props.onChange?.(value, event)
     }}
-    theme={dark ? 'vs-dark' : 'vs'}
   />
 }
 

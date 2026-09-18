@@ -5,3 +5,7 @@ declare module 'monaco-editor/esm/vs/editor/editor.api' {
 declare namespace JSX {
   type Element = import('react').JSX.Element
 }
+declare module '*?worker' {
+  const WorkerFactory: new (options?: WorkerOptions) => Worker
+  export default WorkerFactory
+}

@@ -10,7 +10,7 @@
     "rootDir": "."
   },
   "include": [
-    "src/main.tsx",
-    "src/compat.d.ts"
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ]
 }

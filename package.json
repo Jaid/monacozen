@@ -25,10 +25,11 @@
     "#root/*": "./*"
   },
   "scripts": {
-    "build": "bun run vite build && build_lib out/intermediate --runtimeEntryFile src/main.js --precompiled --copyFiles monaco.d.ts --copyFiles src/monacozen.css --copyFiles assets --terser-strength max --outputFolder ../../dist",
+    "build": "bun run vite build && build_lib out/intermediate --runtimeEntryFile src/main.js --outputFileName src/main.js --precompiled --copyFiles assets --terser-strength max --outputFolder ../../dist",
     "lint": "eslint .",
     "test": "bun test --max-concurrency 1 ./test ./packages",
-    "typecheck": "tsc --noEmit && tsc --noEmit --project test/tsconfig.json && tsc --noEmit --project packages/vite-plugin-lib-intermediate/tsconfig.json && tsc --noEmit --project packages/vite-plugin-override-monaco-themes/tsconfig.json && tsc --noEmit --project packages/vite-plugin-omit-monaco-languages/tsconfig.json",
+    "test:browser": "bun run build && bun test ./test-browser/main.test.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project test/tsconfig.json && tsc --noEmit --project packages/monaco-language-clank/tsconfig.json && tsc --noEmit --project packages/monaco-language-logsql/tsconfig.json && tsc --noEmit --project packages/monaco-language-metricsql/tsconfig.json && tsc --noEmit --project packages/vite-plugin-add-monaco-languages/tsconfig.json && tsc --noEmit --project packages/vite-plugin-lib-intermediate/tsconfig.json && tsc --noEmit --project packages/vite-plugin-omit-monaco-languages/tsconfig.json && tsc --noEmit --project packages/vite-plugin-override-monaco-themes/tsconfig.json && tsc --noEmit --project test-browser/tsconfig.json",
     "vite": "bun --bun node_modules/vite/dist/node/cli.js --configLoader native"
   },
   "dependencies": {
@@ -47,15 +48,22 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "10.10.0",
     "eslint-config-jaid": "32.0.0",
+    "fs-extra": "11.4.0",
+    "monaco-language-clank": "workspace:*",
+    "monaco-language-logsql": "workspace:*",
+    "monaco-language-metricsql": "workspace:*",
+    "puppeteer-core": "25.11.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tsconfig-jaid-react": "16.0.0",
     "typescript": "npm:typescript-classic@6.0.4",
     "vite": "8.3.0",
+    "vite-plugin-add-monaco-languages": "workspace:*",
     "vite-plugin-lib-intermediate": "workspace:*",
     "vite-plugin-omit-monaco-languages": "workspace:*",
     "vite-plugin-override-monaco-themes": "workspace:*",
     "@types/bun": "1.4.2",
+    "@types/fs-extra": "11.0.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0"
   },
