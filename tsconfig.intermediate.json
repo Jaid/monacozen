@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "incremental": false,
+    "noEmit": false,
+    "outDir": "out/intermediate",
+    "rootDir": "."
+  },
+  "include": [
+    "src/main.tsx",
+    "src/compat.d.ts"
+  ]
+}
