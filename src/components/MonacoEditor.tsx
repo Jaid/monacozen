@@ -26,7 +26,7 @@ const MonacoEditor = ({dark = true, font = 'antimono', height = '100%', width = 
     }
   }, [fontReady, font])
   const options = resolveMonacoOptions(font, {
-    ...monaco,
+    ...monaco === true ? {} : monaco,
     ...readOnly === undefined ? {} : {readOnly},
     ...disabled ? {
       readOnly: true,

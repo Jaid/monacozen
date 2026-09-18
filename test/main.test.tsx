@@ -17,6 +17,7 @@ describe('Monacozen', () => {
       padding: {top: 6},
     })
     expect(resolveMonacoOptions()).not.toHaveProperty('padding')
+    expect(resolveMonacoOptions('antimono', true)).toEqual(resolveMonacoOptions('antimono', {}))
   })
   test('renders a native input without loading Monaco', () => {
     const html = renderToStaticMarkup(<Monacozen aria-label='Text' defaultValue='hello' font='mono' monaco={false} />)

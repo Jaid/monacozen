@@ -21,7 +21,7 @@ export type MonacoEditorProps = EditorAppearance & Omit<HTMLAttributes<HTMLDivEl
   language?: string
   line?: number
   loading?: ReactNode
-  monaco?: MonacoOptions
+  monaco?: MonacoOptions | true
   onChange?: (value: string | undefined, event: Monaco.editor.IModelContentChangedEvent) => void
   onMount?: (editor: Monaco.editor.IStandaloneCodeEditor, monaco: MonacoApi) => void
   onValidate?: (markers: Array<Monaco.editor.IMarker>) => void
@@ -44,7 +44,7 @@ export type DummyEditorProps = EditorAppearance & Omit<ComponentPropsWithoutRef<
 export type MonacozenProps = DummyEditorProps & {monaco: false} | MonacoEditorProps
 
 export type SwitchableEditorProps = Omit<MonacoEditorProps, keyof DOMAttributes<HTMLDivElement> | 'monaco' | 'onMount'> & Omit<DOMAttributes<HTMLElement>, 'children' | 'onChange'> & {
-  monaco: MonacoOptions | false
+  monaco: MonacoOptions | boolean
   onChange?: (value: string | undefined, event: ChangeEvent<HTMLTextAreaElement> | Monaco.editor.IModelContentChangedEvent) => void
   onMount?: (editor: HTMLTextAreaElement | Monaco.editor.IStandaloneCodeEditor, monaco?: MonacoApi) => void
 }

@@ -38,8 +38,8 @@ export const defaultOptions = {
   tabSize: 2,
   wordWrap: 'on',
 } satisfies MonacoOptions
-export const resolveMonacoOptions = (font: EditorFont = 'antimono', monaco?: MonacoOptions) => ({
+export const resolveMonacoOptions = (font: EditorFont = 'antimono', monaco?: MonacoOptions | true) => ({
   ...defaultOptions,
-  ...monaco,
+  ...monaco === true ? {} : monaco,
   ...fontOptions[font],
 })
