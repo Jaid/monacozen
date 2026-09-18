@@ -33,18 +33,15 @@
     "vite": "bun --bun node_modules/vite/dist/node/cli.js --configLoader native"
   },
   "dependencies": {
-    "@monaco-editor/react": "4.7.0",
     "antimono": "0.1.0",
-    "monaco-editor": "0.56.0"
+    "monaco-editor": "0.56.0",
+    "@monaco-editor/react": "4.7.0"
   },
   "peerDependencies": {
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@babel/core": "8.0.5",
-    "@rolldown/plugin-babel": "0.2.4",
-    "@vitejs/plugin-react": "6.1.1",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "10.10.0",
     "eslint-config-jaid": "33.0.0",
@@ -62,6 +59,9 @@
     "vite-plugin-lib-intermediate": "workspace:*",
     "vite-plugin-omit-monaco-languages": "workspace:*",
     "vite-plugin-override-monaco-themes": "workspace:*",
+    "@babel/core": "8.0.5",
+    "@rolldown/plugin-babel": "0.2.4",
+    "@vitejs/plugin-react": "6.1.1",
     "@types/bun": "1.4.2",
     "@types/fs-extra": "11.0.4",
     "@types/react": "19.3.0",
