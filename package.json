@@ -47,7 +47,7 @@
     "@vitejs/plugin-react": "6.1.1",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "10.10.0",
-    "eslint-config-jaid": "32.0.0",
+    "eslint-config-jaid": "33.0.0",
     "fs-extra": "11.4.0",
     "monaco-language-clank": "workspace:*",
     "monaco-language-logsql": "workspace:*",
