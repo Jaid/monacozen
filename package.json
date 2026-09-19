@@ -1,8 +1,9 @@
 {
   "name": "monacozen",
+  "displayName": "Monacozen",
   "version": "0.1.0",
   "type": "module",
-  "description": "an opinionated React wrapper around Monaco Editor",
+  "description": "text editor component with batteries included and UI clutter removed",
   "keywords": [
     "react",
     "monaco",

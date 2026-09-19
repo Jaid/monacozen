@@ -1,27 +1,35 @@
-# monacozen
+<center><a href="https://npmjs.com/package/monacozen"><img src="https://shieldcn.dev/npm/v/monacozen.svg?variant=secondary&logo=npm&label=latest+version" alt="Latest version on npm"/></a> <a href="https://github.com/Jaid/monacozen/raw/HEAD/license.txt"><img src="https://shieldcn.dev/github/license/Jaid/monacozen.svg?variant=secondary" alt="License"/></a> <a href="https://bun.sh"><picture><source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/badge/Bun-fbf0df.svg?variant=outline&logo=bun&logoColor=fbf0df&mode=dark"><img src="https://shieldcn.dev/badge/Bun-fbf0df.svg?variant=outline&logo=bun&logoColor=fbf0df&mode=light" alt="Bun"/></picture></a></center>
 
-An opinionated React editor with a lazily loaded Monaco backend and a lightweight native alternative.
+# Monacozen
 
-## Install
+text editor component with batteries included and UI clutter removed
+
+## installation
+
+<a href="https://npmjs.com/package/monacozen"><img src="https://shieldcn.dev/badge/npm-monacozen-C23039.svg?variant=secondary&logo=npm" alt="monacozen on npm"/></a>
 
 ```sh
-npm install monacozen
+npm install --save monacozen
 ```
 
-React and React DOM are peer dependencies. Monaco, its workers and Antimono are included in the built package. Use a browser bundler that supports CSS imports, dynamic imports and worker asset URLs. The production package is tested through a separate Vite consumer build.
-
-## Monaco editor
+## example
 
 ```tsx
+import {useState} from 'react'
 import Monacozen from 'monacozen'
+
+const [text, setText] = useState<string>('')
 
 <Monacozen
   language='typescript'
-  monaco={{padding: {top: 6}, readOnly: false}}
   value={text}
   onChange={value => setText(value ?? '')}
 />
 ```
+
+## usage
+
+### Monaco editor
 
 `monaco` replaces the former `options` prop. Omit it to use the shared defaults or pass an options object to override them. `fontFamily` and `disableMonospaceOptimizations` are excluded because the `font` prop controls them. Padding is not part of the shared defaults.
 
@@ -29,7 +37,7 @@ The existing Monaco props, including `beforeMount`, `onMount`, `onChange`, `onVa
 
 The common `readOnly`, `disabled`, `placeholder`, `autoFocus` and `aria-label` props work in both modes. Explicit common props take precedence over the corresponding Monaco options.
 
-## Native editor
+### native editor
 
 ```tsx
 <Monacozen
@@ -69,21 +77,23 @@ A dynamically selected mode is supported too:
 
 Uncontrolled text is retained when switching modes. For controlled input, keep supplying `value`. The callback types reflect the backend: a dynamically selected mode has a change-event union and an `onMount` callback that may receive either editor kind. Use `SwitchableEditorProps` when explicitly typing a dynamically selected mode.
 
-## Appearance
+### appearance
 
 `dark` defaults to `true`. Monaco uses the bundled, modified `vs-dark` theme with a black background. `dark={false}` selects its light theme. The native editor uses white text on black or black text on white.
 
 `font` defaults to `antimono` and also accepts `mono` for the system monospace font or `dense` for the system sans-serif font. Both backends support `height`, `width`, `className` and `style`.
 
-## Loading
+## advanced usage
 
-Importing Monacozen does not initialize Monaco or load either stylesheet. Rendering the Monaco backend starts the React adapter and Monaco imports concurrently. A Suspense boundary displays the `loading` prop while they load. Monaco's stylesheet belongs to its lazy chunks rather than the public entry, so it is fetched before the editor mounts.
+### loading
+
+Importing Monacozen does not initialize Monaco or load either stylesheet. Rendering the Monaco backend starts the React adapter and Monaco imports concurrently. A Suspense boundary displays the `loading` prop while they load. Monaco’s stylesheet belongs to its lazy chunks rather than the public entry, so it is fetched before the editor mounts.
 
 Antimono has a separate stylesheet and lazy import. It is loaded only when a mounted editor selects `font='antimono'`, including when that selection comes from the default. Selecting `mono` or `dense` alone does not load it. Once the font finishes loading, mounted Monaco editors remeasure their font metrics.
 
-Modules and styles are reused across instances and mode changes. Styles are not removed when a component unmounts. Language workers are constructed on demand; an existing `MonacoEnvironment` worker configuration is respected. Loading errors can be handled by the application's React error boundary.
+Modules and styles are reused across instances and mode changes. Styles are not removed when a component unmounts. Language workers are constructed on demand; an existing `MonacoEnvironment` worker configuration is respected. Loading errors can be handled by the application’s React error boundary.
 
-## Additional languages
+### additional languages
 
 Set `language` to one of these IDs:
 
@@ -99,26 +109,74 @@ The definitions provide syntax highlighting and basic editing configuration, not
 
 The Monaco build continues to exclude `abap`, `apex`, `lexon`, `sb` and `flow9`.
 
-## Build
+## props
+
+option | type | default | info
+--- | --- | --- | ---
+`className` | `string` |  | class name for the active editor element or Monaco wrapper
+`aria-label` | `string` |  | accessible label for both backends; mapped to Monaco’s ariaLabel option
+`autoFocus` | `boolean` | `false` | Focuses the active editor after mounting.
+`beforeMount` | `(monaco: MonacoApi) => void` |  | callback after Monaco loads and before editor creation
+`dark` | `boolean` | `true` | dark or light appearance
+`defaultLanguage` | `string` |  | language for newly created Monaco models
+`defaultPath` | `string` |  | path for newly created Monaco models
+`defaultValue` | `string` | `''` | initial value for uncontrolled usage and backend switching
+`disabled` | `boolean` | `false` | Disables editing; Monaco also receives domReadOnly.
+`font` | `'antimono' \| 'dense' \| 'mono'` | `'antimono'` | Antimono, system sans-serif or system monospace font
+`height` | `number \| string` | `'100%'`
+`keepCurrentModel` | `boolean` | `false` | Keeps the current Monaco model alive after unmounting.
+`language` | `string` |  | current Monaco model language
+`line` | `number` |  | line to reveal in Monaco
+`loading` | `ReactNode` | `'Loading…'` | Suspense fallback while the Monaco backend loads
+`monaco` | `MonacoOptions \| boolean` |  | Omit for the Monaco backend with shared defaults; false uses DummyEditor and true is shorthand for an empty Monaco options object.
+`overrideServices` | `Monaco.editor.IEditorOverrideServices` | `{}` | Monaco editor service overrides passed to [@monaco-editor/react](https://npmx.dev/package/@monaco-editor/react)
+`path` | `string` |  | current Monaco model path
+`placeholder` | `string` |  | placeholder text supported by both backends
+`readOnly` | `boolean` | `false` | editor read-only state
+`saveViewState` | `boolean` | `true` | Saves and restores Monaco model view state between model changes.
+`style` | `CSSProperties` |  | inline styles applied after the width and height defaults
+`value` | `string` |  | controlled editor value
+`width` | `number \| string` | `'100%'`
+`wrapperProps` | `HTMLAttributes<HTMLDivElement>` |  | attributes for the enclosing wrapper element
+`ref` | `Ref<HTMLTextAreaElement>` |  | native textarea ref when monaco is false
+`onChange` | `(value: string \| undefined, event: ChangeEvent<HTMLTextAreaElement> \| Monaco.editor.IModelContentChangedEvent) => void` |  | Called when the editor value changes; the native backend always provides a string.
+`onMount` | `(editor: HTMLTextAreaElement \| Monaco.editor.IStandaloneCodeEditor, monaco?: MonacoApi) => void` |  | Called after the active backend mounts.
+`onValidate` | `(markers: Monaco.editor.IMarker[]) => void` |  | callback when validation markers for the current model change
+
+## development
+
+### setting up
 
 ```sh
+git clone git@github.com:Jaid/monacozen.git
+cd monacozen
 bun install
-bun run build
 ```
 
-Vite compiles the JSX with React Compiler, produces `out/intermediate/src/main.js` and preserves lazy chunks and styles under `out/intermediate/assets`. `build_lib` packages that project without recombining its runtime chunks. The result is in `dist/monacozen/production`.
+### linting
 
-The intermediate plugin attaches CSS imports to the chunks that own them. Monaco CSS and Antimono CSS remain separate. Runtime files keep the same relative layout through both build stages, including worker URLs. Monaco's public declarations are inlined into `lib.d.ts`; consumers do not need a separate `monaco-editor` installation for types.
+```sh
+bun run lint
+```
 
-The workspace plugins handle intermediate packaging, built-in theme overrides, language omission and additional lazy language registration. Additional language modules export `{language, configuration}`, using Monaco's Monarch tokenizer and language-configuration types.
-
-## Verification
+### type checking
 
 ```sh
 bun run typecheck
-bun run lint
-bun run test
-bun run test:browser
 ```
 
-The browser test requires Chromium. It uses Chrome's standard Windows installation by default; set `CHROME_PATH` for another installation. It creates a clean consumer without `monaco-editor`, checks its types with strict library checking, builds it with Vite and verifies actual requests and editor behavior in Chromium.
+### testing
+
+```sh
+bun run test
+```
+
+## license
+
+[MIT License](https://github.com/Jaid/monacozen/raw/HEAD/license.txt)<br>
+Copyright © 2026, Jaid \<jaid.jsx@gmail.com> (https://github.com/jaid)
+
+<!---
+Readme generated with tldw v8.0.3 from ./docs/tldw
+https://github.com/Jaid/tldw
+-->

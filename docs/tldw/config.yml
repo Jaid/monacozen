@@ -1,0 +1,101 @@
+installation: true
+props:
+  style: table
+  entries:
+    monaco:
+      type: MonacoOptions | boolean
+      info: Omit for the Monaco backend with shared defaults; false uses DummyEditor and true is shorthand for an empty Monaco options object.
+    value:
+      type: string
+      info: controlled editor value
+    defaultValue:
+      type: string
+      default: "''"
+      info: initial value for uncontrolled usage and backend switching
+    onChange:
+      type: "(value: string | undefined, event: ChangeEvent<HTMLTextAreaElement> | Monaco.editor.IModelContentChangedEvent) => void"
+      info: Called when the editor value changes; the native backend always provides a string.
+    onMount:
+      type: "(editor: HTMLTextAreaElement | Monaco.editor.IStandaloneCodeEditor, monaco?: MonacoApi) => void"
+      info: Called after the active backend mounts.
+    dark:
+      type: boolean
+      default: "true"
+      info: dark or light appearance
+    font:
+      type: "'antimono' | 'dense' | 'mono'"
+      default: "'antimono'"
+      info: Antimono, system sans-serif or system monospace font
+    height:
+      type: number | string
+      default: "'100%'"
+    width:
+      type: number | string
+      default: "'100%'"
+    style:
+      type: CSSProperties
+      info: inline styles applied after the width and height defaults
+    className:
+      type: string
+      info: class name for the active editor element or Monaco wrapper
+    aria-label:
+      type: string
+      info: accessible label for both backends; mapped to Monaco’s ariaLabel option
+    autoFocus:
+      type: boolean
+      default: "false"
+      info: Focuses the active editor after mounting.
+    disabled:
+      type: boolean
+      default: "false"
+      info: Disables editing; Monaco also receives domReadOnly.
+    readOnly:
+      type: boolean
+      default: "false"
+      info: editor read-only state
+    placeholder:
+      type: string
+      info: placeholder text supported by both backends
+    loading:
+      type: ReactNode
+      default: "'Loading…'"
+      info: Suspense fallback while the Monaco backend loads
+    language:
+      type: string
+      info: current Monaco model language
+    defaultLanguage:
+      type: string
+      info: language for newly created Monaco models
+    path:
+      type: string
+      info: current Monaco model path
+    defaultPath:
+      type: string
+      info: path for newly created Monaco models
+    line:
+      type: number
+      info: line to reveal in Monaco
+    keepCurrentModel:
+      type: boolean
+      default: "false"
+      info: Keeps the current Monaco model alive after unmounting.
+    saveViewState:
+      type: boolean
+      default: "true"
+      info: Saves and restores Monaco model view state between model changes.
+    beforeMount:
+      type: "(monaco: MonacoApi) => void"
+      info: callback after Monaco loads and before editor creation
+    onValidate:
+      type: "(markers: Monaco.editor.IMarker[]) => void"
+      info: callback when validation markers for the current model change
+    overrideServices:
+      type: Monaco.editor.IEditorOverrideServices
+      default: "{}"
+      info: Monaco editor service overrides passed to [@monaco-editor/react](https://npmx.dev/package/@monaco-editor/react)
+    wrapperProps:
+      type: HTMLAttributes<HTMLDivElement>
+      info: attributes for the enclosing wrapper element
+    ref:
+      type: Ref<HTMLTextAreaElement>
+      info: native textarea ref when monaco is false
