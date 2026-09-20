@@ -26,7 +26,7 @@
     "#root/*": "./*"
   },
   "scripts": {
-    "build": "bun run vite build && build_lib out/intermediate --runtimeEntryFile src/main.js --outputFileName src/main.js --precompiled --copyFiles assets --terser-strength max --outputFolder ../../dist",
+    "build": "bun run vite build && build_lib out/intermediate --runtimeEntryFile src/main.js --precompiled --copyFiles assets --terser-strength max --outputFolder ../../dist",
     "lint": "eslint .",
     "test": "bun test --max-concurrency 1 ./test ./packages",
     "test:browser": "bun run build && bun test ./test-browser/main.test.ts",
