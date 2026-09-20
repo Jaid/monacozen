@@ -16,10 +16,10 @@ const config: UserConfig = {
     overrideMonacoThemesPlugin({
       'vs-dark': {
         colors: {
-          'editor.background': '#000000',
-          'editor.inactiveSelectionBackground': '#222222',
-          'editor.lineHighlightBorder': '#00000000',
-          'editor.selectionBackground': '#333333',
+          'editor.background': '#000',
+          'editor.inactiveSelectionBackground': '#222',
+          'editor.lineHighlightBorder': '#0000',
+          'editor.selectionBackground': '#333',
           'editorCursor.foreground': '#fff',
         },
       },
