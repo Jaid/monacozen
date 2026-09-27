@@ -20,12 +20,13 @@ describe('Monacozen', () => {
     expect(resolveMonacoOptions('antimono', true)).toEqual(resolveMonacoOptions('antimono', {}))
   })
   test('renders a native input without loading Monaco', () => {
-    const html = renderToStaticMarkup(<Monacozen aria-label='Text' defaultValue='hello' font='mono' monaco={false} />)
+    const html = renderToStaticMarkup(<Monacozen aria-label='Text' defaultValue='hello' font='mono' monaco={false} schema={{type: 'object'}} />)
     expect(html).toContain('<textarea')
     expect(html).toContain('hello</textarea>')
     expect(html).toContain('background-color:#000')
     expect(html).toContain('color:#fff')
     expect(html).not.toContain('monaco-editor')
+    expect(html).not.toContain('schema=')
   })
   test('supports light mode, native attributes and proportional text', () => {
     const html = renderToStaticMarkup(<DummyEditor dark={false} font='dense' name='query' placeholder='Enter text' readOnly value='read only' />)

@@ -7,7 +7,7 @@ import DummyEditor from './components/DummyEditor.tsx'
 import MonacoEditor from './components/MonacoEditor.tsx'
 
 export {default as DummyEditor} from './components/DummyEditor.tsx'
-export type {DummyEditorProps, EditorFont, MonacoApi, MonacoEditorProps, MonacoOptions, MonacozenProps, SwitchableEditorProps} from './types.ts'
+export type {DummyEditorProps, EditorFont, EditorSchema, MonacoApi, MonacoEditorProps, MonacoOptions, MonacozenProps, SwitchableEditorProps} from './types.ts'
 
 function Monacozen(props: DummyEditorProps & {monaco: false}): JSX.Element
 function Monacozen(props: MonacoEditorProps): JSX.Element

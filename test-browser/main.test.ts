@@ -14,15 +14,25 @@ const app = `import React, {useState} from 'react'
 import {createRoot} from 'react-dom/client'
 import Monacozen from 'monacozen'
 window.events = []
+window.workerLabels = []
+const NativeWorker = window.Worker
+window.Worker = class extends NativeWorker {
+  constructor(url, options) {
+    super(url, options)
+    window.workerLabels.push(options?.name)
+  }
+}
 function App() {
   const [mode, setMode] = useState('none')
   const [font, setFont] = useState('mono')
   const [dark, setDark] = useState(true)
   const [language, setLanguage] = useState('plaintext')
-  Object.assign(window, {setMode, setFont, setDark, setLanguage})
+  const [schema, setSchema] = useState()
+  Object.assign(window, {setMode, setFont, setDark, setLanguage, setSchema})
   const common = {
-    font, dark, height: 240, width: 600, defaultValue: 'seed', 'aria-label': 'Text',
+    font, dark, schema, height: 240, width: 600, defaultValue: 'seed', 'aria-label': 'Text',
     onChange(value, event) {window.lastValue = value; window.events.push('change')},
+    onValidate(markers) {window.markers = markers},
     onInput() {window.events.push('input')},
     onFocus() {window.events.push('focus')},
     onBlur() {window.events.push('blur')},
@@ -43,9 +53,10 @@ createRoot(document.getElementById('root')).render(React.createElement(App))
 `
 const consumerTypes = `import Monacozen, {DummyEditor, type MonacozenProps} from 'monacozen'
 const enabled = Math.random() > 0.5
-void <Monacozen monaco={enabled ? {wordWrap: 'on'} : false} onChange={value => console.log(value)} />
+void <Monacozen language='yaml' schema={{type: 'object'}} monaco={enabled ? {wordWrap: 'on'} : false} onChange={value => console.log(value)} />
 const dummy: MonacozenProps = {
   monaco: false,
+  schema: {type: 'object'},
   onChange(value, event) {const text: string = event.currentTarget.value; void [text, value]},
   onMount(input) {input.setSelectionRange(0, 1)},
 }
@@ -69,10 +80,11 @@ test('a clean consumer loads editors, styles and language grammars only on deman
   const folder = await fs.mkdtemp(join(tmpdir(), 'monacozen-browser-'))
   let browser: Browser | undefined
   let server: Bun.Server<undefined> | undefined
+  const errors: Array<string> = []
   try {
     const requests: Array<string> = []
-    const errors: Array<string> = []
     const externalRequests: Array<string> = []
+    const schemaRequests: Array<string> = []
     const moduleFolder = join(folder, 'node_modules')
     const packageFolder = join(root, 'dist/monacozen/production')
     const assets = await fs.readdir(join(packageFolder, 'assets'))
@@ -98,6 +110,7 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     await fs.writeFile(join(folder, 'app.jsx'), app)
     await fs.writeFile(join(folder, 'types.tsx'), consumerTypes)
     expect(await fs.pathExists(join(moduleFolder, 'monaco-editor'))).toBe(false)
+    expect(await fs.pathExists(join(moduleFolder, 'monaco-yaml'))).toBe(false)
     for (const moduleResolution of ['bundler', 'nodenext']) {
       await fs.outputJson(join(folder, 'tsconfig.json'), {
         compilerOptions: {
@@ -145,6 +158,26 @@ test('a clean consumer loads editors, styles and language grammars only on deman
       async fetch(request) {
         const url = new URL(request.url)
         const pathname = decodeURIComponent(url.pathname)
+        if (pathname === '/schemas/editor.json') {
+          schemaRequests.push(pathname)
+          return Response.json({
+            type: 'object',
+            additionalProperties: false,
+            required: ['name'],
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Name of this editor configuration.',
+              },
+              mode: {enum: ['fast', 'safe']},
+              enabled: {$ref: './types.json#/definitions/enabled'},
+            },
+          })
+        }
+        if (pathname === '/schemas/types.json') {
+          schemaRequests.push(pathname)
+          return Response.json({definitions: {enabled: {type: 'boolean'}}})
+        }
         const file = Bun.file(join(folder, 'dist', pathname === '/' ? 'index.html' : pathname.slice(1)))
         return await file.exists() ? new Response(file) : new Response('Not found', {status: 404})
       },
@@ -247,9 +280,98 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     await page.evaluate('window.setLanguage("json"); window.editor.setValue(\'{"value": }\')')
     await page.waitForFunction('window.monaco.editor.getModelMarkers({resource: window.editor.getModel().uri}).length > 0')
     expect(requests.some(path => path.includes('json.worker'))).toBe(true)
+    const inlineSchema = {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name'],
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Name of this editor configuration.',
+        },
+        mode: {enum: ['fast', 'safe']},
+        enabled: {type: 'boolean'},
+      },
+    }
+    // The language-agnostic schema prop applies directly to JSON.
+    await page.evaluate(schema => {
+      const w = globalThis as unknown as {
+        editor: {setValue: (value: string) => void}
+        setSchema: (schema: unknown) => void
+      }
+      w.setSchema(schema)
+      w.editor.setValue('{"name": 42, "enabled": "nope"}')
+    }, inlineSchema)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "json", resource: window.editor.getModel().uri}).length === 2')
+    const jsonMessages = await page.evaluate(String.raw`window.monaco.editor.getModelMarkers({owner: "json", resource: window.editor.getModel().uri}).map(marker => marker.message).join("\n")`) as string
+    expect(jsonMessages).toContain('string')
+    expect(jsonMessages).toContain('boolean')
+    // The same prop is ignored when the active language has no schema service.
     await page.evaluate('window.setLanguage("typescript"); window.editor.setValue(\'const count: number = "wrong"\')')
     await page.waitForFunction('window.monaco.editor.getModelMarkers({resource: window.editor.getModel().uri}).some(marker => String(marker.code) === "2322")')
     expect(requests.some(path => path.includes('ts.worker'))).toBe(true)
+    expect(requests.some(path => path.includes('yaml.worker'))).toBe(false)
+    expect(schemaRequests).toEqual([])
+    // The same in-memory schema is automatically applied after switching to YAML.
+    await page.evaluate(schema => {
+      const w = globalThis as unknown as {
+        editor: {setValue: (value: string) => void}
+        setLanguage: (language: string) => void
+        setSchema: (schema: unknown) => void
+      }
+      w.setLanguage('yaml')
+      w.setSchema(schema)
+      w.editor.setValue('name: 42\nenabled: nope\n')
+    }, inlineSchema)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 2')
+    const inlineYamlMessages = await page.evaluate(String.raw`window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).map(marker => marker.message).join("\n")`) as string
+    expect(inlineYamlMessages).toContain('string')
+    expect(inlineYamlMessages).toContain('boolean')
+    expect(schemaRequests).toEqual([])
+    await page.evaluate('window.setSchema(undefined)')
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 0')
+    // YAML schema directives still work without importing or configuring monaco-yaml in the consumer.
+    const directive = `# yaml-language-server: $schema=${origin}/schemas/editor.json`
+    const invalidYaml = `${directive}\nname: 42\nenabled: nope\n`
+    await page.evaluate(`window.setLanguage('yaml'); window.editor.setValue(${JSON.stringify(invalidYaml)})`)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 2')
+    await page.waitForFunction('window.markers?.filter(marker => marker.owner === "yaml").length === 2')
+    const yamlMessages = await page.evaluate(String.raw`window.markers.map(marker => marker.message).join("\n")`) as string
+    expect(yamlMessages).toContain('string')
+    expect(yamlMessages).toContain('boolean')
+    expect(schemaRequests).toContain('/schemas/editor.json')
+    expect(schemaRequests).toContain('/schemas/types.json')
+    expect(requests.some(path => path.includes('yaml.worker'))).toBe(true)
+    // Filename detection and multiple models use the same YAML service.
+    const yamlWorkersBeforeSecondModel = await page.evaluate('window.workerLabels.filter(label => label === "yaml").length') as number
+    const secondYaml = `${directive}\nname: false\n`
+    await page.evaluate(`window.secondModel = window.monaco.editor.createModel(${JSON.stringify(secondYaml)}, undefined, window.monaco.Uri.parse(${JSON.stringify(`${origin}/settings.yml`)}))`)
+    expect(await page.evaluate('window.secondModel.getLanguageId()')).toBe('yaml')
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.secondModel.uri}).some(marker => marker.message.includes("string"))')
+    await page.evaluate('window.secondModel.dispose()')
+    expect(await page.evaluate('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length')).toBe(2)
+    expect(await page.evaluate('window.workerLabels.filter(label => label === "yaml").length')).toBe(yamlWorkersBeforeSecondModel)
+    // Exercise completion and hover through the actual editor UI, not a separate language service.
+    const completionYaml = `${directive}\nname: Monacozen\nmode: `
+    await page.evaluate(`window.editor.setValue(${JSON.stringify(completionYaml)}); window.editor.focus(); window.editor.setPosition({lineNumber: 3, column: 7}); window.editor.trigger('test', 'editor.action.triggerSuggest', {})`)
+    await page.waitForFunction('document.querySelector(".suggest-widget.visible")?.textContent.includes("safe")')
+    const suggestions = await page.$eval('.suggest-widget.visible', element => element.textContent)
+    expect(suggestions).toContain('fast')
+    expect(suggestions).toContain('safe')
+    await page.keyboard.press('Escape')
+    await page.evaluate('window.editor.setPosition({lineNumber: 2, column: 2}); window.editor.trigger("test", "editor.action.showHover", {})')
+    await page.waitForFunction('Array.from(document.querySelectorAll(".monaco-hover")).some(element => element.textContent.includes("Name of this editor configuration."))')
+    await page.keyboard.press('Escape')
+    const unformattedYaml = `${directive}\nname: Monacozen\nmode:   safe\nenabled:    true`
+    await page.evaluate(`window.editor.setValue(${JSON.stringify(unformattedYaml)})`)
+    await page.evaluate('window.editor.getAction("editor.action.formatDocument").run()')
+    expect(await page.evaluate('window.editor.getValue()')).toBe(`${directive}\nname: Monacozen\nmode: safe\nenabled: true\n`)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 0')
+    // Syntax validation remains active without an associated schema.
+    await page.evaluate(String.raw`window.editor.setValue("duplicate: true\nduplicate: false\n")`)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.message.includes("unique"))')
+    await page.evaluate(String.raw`window.editor.setValue("duplicate: true\n")`)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 0')
     await page.evaluate(text => {
       const w = globalThis as unknown as {editor: {setValue: (text: string) => void}}
       w.editor.setValue(text)
@@ -265,6 +387,13 @@ test('a clean consumer loads editors, styles and language grammars only on deman
       styles: requests.filter(path => path.endsWith('.css')),
       totalRequests: requests.length,
     }, null, 2))
+  } catch (error) {
+    console.error('Browser errors:', errors)
+    if (browser) {
+      const pages = await browser.pages()
+      console.error('Browser state:', await pages.at(-1)?.evaluate('({labels: window.workerLabels, markers: window.monaco?.editor.getModelMarkers({}), language: window.editor?.getModel()?.getLanguageId(), value: window.editor?.getValue()})'))
+    }
+    throw error
   } finally {
     await browser?.close()
     await server?.stop(true)

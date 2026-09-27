@@ -8,6 +8,12 @@ import omitMonacoLanguagesPlugin from 'vite-plugin-omit-monaco-languages'
 import overrideMonacoThemesPlugin from 'vite-plugin-override-monaco-themes'
 
 const config: UserConfig = {
+  resolve: {
+    alias: {
+      // monaco-worker-manager still imports the pre-0.57 worker entry path.
+      'monaco-editor/esm/vs/editor/editor.worker.js': 'monaco-editor/editor/editor.worker.js',
+    },
+  },
   plugins: [
     reactPlugin(),
     babelPlugin({
@@ -85,6 +91,7 @@ const config: UserConfig = {
         '@monaco-editor/react',
         'antimono',
         'monaco-editor',
+        'monaco-yaml',
       ],
       vendoredDeclarations: [
         {

@@ -5,7 +5,7 @@ import {useImperativeHandle, useLayoutEffect, useRef} from 'react'
 import {fontOptions} from '../lib/options.ts'
 import {useFont} from '../lib/useFont.ts'
 
-const DummyEditor = ({dark = true, font = 'antimono', height = '100%', width = '100%', onChange, onMount, ref, style, wrapperProps, value, defaultValue, ...props}: DummyEditorProps) => {
+const DummyEditor = ({dark = true, font = 'antimono', height = '100%', width = '100%', schema: _schema, onChange, onMount, ref, style, wrapperProps, value, defaultValue, ...props}: DummyEditorProps) => {
   useFont(font)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const mountCallback = useRef(onMount)

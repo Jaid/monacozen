@@ -2,10 +2,12 @@ import type * as Monaco from 'monaco-editor/editor/editor.api'
 import type {ChangeEvent, ComponentPropsWithoutRef, DOMAttributes, HTMLAttributes, ReactNode, Ref} from 'react'
 
 export type EditorFont = 'antimono' | 'dense' | 'mono'
+export type EditorSchema = Record<string, unknown>
 export type EditorAppearance = {
   dark?: boolean
   font?: EditorFont
   height?: number | string
+  schema?: EditorSchema
   width?: number | string
 }
 export type MonacoApi = typeof Monaco

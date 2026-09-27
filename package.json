@@ -36,6 +36,7 @@
   "dependencies": {
     "antimono": "0.1.0",
     "monaco-editor": "0.57.0",
+    "monaco-yaml": "5.5.1",
     "@monaco-editor/react": "4.7.0"
   },
   "peerDependencies": {
