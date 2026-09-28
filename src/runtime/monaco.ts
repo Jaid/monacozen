@@ -52,7 +52,10 @@ const yaml = configureMonacoYaml({
     ...monaco.editor,
     createWebWorker,
   },
-}, {enableSchemaRequest: true})
+}, {
+  enableSchemaRequest: true,
+  hoverSchemaSource: false,
+})
 
 type SchemaLanguage = 'json' | 'yaml'
 type SchemaEntry = {
