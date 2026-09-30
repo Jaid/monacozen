@@ -6,6 +6,8 @@ import {createWebWorker} from 'monaco-editor/internal/common/workers'
 import {jsonDefaults} from 'monaco-editor/languages/features/json/register'
 import {configureMonacoYaml} from 'monaco-yaml'
 
+import {registerSchemaCompletions} from './schemaCompletions.ts'
+
 const getWorkerModule = (label: string) => {
   switch (label) {
     case 'json': {
@@ -138,6 +140,7 @@ export const registerModelSchema = (model: editor.ITextModel, schema: EditorSche
   }
   schemaEntries.set(id, entry)
   syncSchemas(language)
+  const completions = registerSchemaCompletions(model, () => (language === 'yaml' ? yamlUpdateQueue : Promise.resolve()))
   let disposed = false
   return {
     dispose() {
@@ -145,6 +148,7 @@ export const registerModelSchema = (model: editor.ITextModel, schema: EditorSche
         return
       }
       disposed = true
+      completions.dispose()
       schemaEntries.delete(id)
       syncSchemas(language)
     },

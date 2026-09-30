@@ -328,7 +328,100 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     expect(inlineYamlMessages).toContain('string')
     expect(inlineYamlMessages).toContain('boolean')
     expect(schemaRequests).toEqual([])
+    // Schema values also work as ghost text, including normal typing and Tab acceptance.
+    const sortSchema = {
+      type: 'object',
+      properties: {
+        sort: {
+          type: 'string',
+          enum: ['firstYear', 'renewal', 'threeYears', 'jaid', 'width', 'length', 'original'],
+          default: 'threeYears',
+        },
+        nested: {$ref: '#/$defs/settings'},
+        rows: {
+          type: 'array',
+          items: {$ref: '#/$defs/settings'},
+        },
+        label: {type: 'string'},
+        literal: {enum: ['$HOME']},
+      },
+      $defs: {
+        settings: {
+          type: 'object',
+          properties: {sort: {enum: ['firstYear', 'threeYears']}},
+        },
+      },
+    }
+    const ghostText = 'Array.from(document.querySelectorAll(".ghost-text-decoration")).map(element => element.textContent).join("")'
+    const setText = async (text: string, language = 'yaml', column?: number) => {
+      await page.keyboard.press('Escape')
+      await page.evaluate(`window.setLanguage(${JSON.stringify(language)}); window.editor.setValue(${JSON.stringify(text)}); window.editor.focus(); window.editor.setPosition({lineNumber: ${text.split('\n').length}, column: ${column ?? (text.split('\n').at(-1)?.length ?? 0) + 1}})`)
+      await page.waitForFunction(`window.editor.getModel().getLanguageId() === ${JSON.stringify(language)}`)
+      await page.waitForFunction(`${ghostText} === ''`)
+    }
+    const expectGhost = async (suffix: string) => {
+      await page.waitForFunction(`${ghostText} === ${JSON.stringify(suffix)}`, {timeout: 10_000})
+    }
+    await page.evaluate(schema => (globalThis as unknown as {setSchema: (schema: unknown) => void}).setSchema(schema), sortSchema)
+    await setText('sort:')
+    await page.keyboard.type(' ')
+    await page.waitForFunction(`['firstYear', 'threeYears'].includes(${ghostText})`, {timeout: 10_000})
+    const firstGhost = await page.evaluate(ghostText) as string
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate('window.editor.getValue()')).toBe(`sort: ${firstGhost}`)
+    await setText('sort: ')
+    await page.keyboard.type('th')
+    await expectGhost('reeYears')
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate('window.editor.getValue()')).toBe('sort: threeYears')
+    for (const prefix of ['nested:\n  sort: ', 'rows:\n  - sort: ']) {
+      await setText(prefix)
+      await page.keyboard.type('th')
+      await expectGhost('reeYears')
+      await page.keyboard.press('Tab')
+      expect(await page.evaluate('window.editor.getValue()')).toBe(`${prefix}threeYears`)
+    }
+    await setText('literal: ')
+    await page.keyboard.type('$')
+    await expectGhost('HOME')
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate('window.editor.getValue()')).toBe('literal: $HOME')
+    // Unrelated prefixes and comments must not gain schema ghost text.
+    for (const text of ['sort: unrelated', '# sort: th', 'label: th']) {
+      await setText(text)
+      await page.evaluate('window.editor.getAction("editor.action.inlineSuggest.trigger").run()')
+      expect(await page.evaluate(ghostText)).toBe('')
+    }
+    await page.evaluate('window.editor.updateOptions({inlineSuggest: {enabled: false}})')
+    await setText('sort: ')
+    await page.keyboard.type('th')
+    expect(await page.evaluate(ghostText)).toBe('')
+    await page.evaluate('window.editor.updateOptions({inlineSuggest: {enabled: true}})')
+    await setText('{"sort": ""}', 'json', 11)
+    await page.keyboard.type('th')
+    await expectGhost('reeYears')
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate('window.editor.getValue()')).toBe('{"sort": "threeYears"}')
+    // An open quoted string must also be completed to valid JSON.
+    await setText('{"sort": "', 'json')
+    await page.keyboard.type('th')
+    await expectGhost('reeYears"')
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate('window.editor.getValue()')).toBe('{"sort": "threeYears"')
+    await setText('sort: ')
+    await page.keyboard.type('th')
+    await expectGhost('reeYears')
+    await page.evaluate('window.setSchema({type: "object", properties: {sort: {enum: ["third"]}}})')
+    await page.waitForFunction(`${ghostText} !== 'reeYears'`)
+    await page.keyboard.type('i')
+    await expectGhost('rd')
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate('window.editor.getValue()')).toBe('sort: third')
+    await setText('sort: ')
+    await page.keyboard.type('th')
+    await expectGhost('ird')
     await page.evaluate('window.setSchema(undefined)')
+    await page.waitForFunction(`${ghostText} === ''`)
     await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 0')
     // YAML schema directives still work without importing or configuring monaco-yaml in the consumer.
     const directive = `# yaml-language-server: $schema=${origin}/schemas/editor.json`

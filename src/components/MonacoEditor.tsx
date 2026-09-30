@@ -75,6 +75,8 @@ const MonacoEditor = ({dark = true, font = 'antimono', height = '100%', width = 
         onMount={(editor, monacoApi) => {
           let schemaRegistration: IDisposable | undefined
           const refreshSchema = () => {
+            // Removing a provider alone does not clear Monaco's cached ghost text.
+            editor.trigger('monacozen', 'editor.action.inlineSuggest.hide', {})
             schemaRegistration?.dispose()
             const model = editor.getModel()
             schemaRegistration = model ? registerModelSchema?.(model, schemaRef.current) : undefined

@@ -17,3 +17,21 @@ declare module 'monaco-editor/internal/common/workers' {
     moduleId: string
   }): import('monaco-editor/editor/editor.api').editor.MonacoWebWorker<T>
 }
+// Narrow types for the pinned Monaco runtime's completion bridge.
+declare module 'monaco-editor/editor/common/services/languageFeatures' {
+  export const ILanguageFeaturesService: unique symbol
+}
+declare module 'monaco-editor/editor/standalone/browser/standaloneServices' {
+  export const StandaloneServices: {
+    get: (service: typeof import('monaco-editor/editor/common/services/languageFeatures').ILanguageFeaturesService) => {
+      completionProvider: {
+        ordered: (model: import('monaco-editor/editor/editor.api').editor.ITextModel) => Array<import('monaco-editor/editor/editor.api').languages.CompletionItemProvider>
+      }
+    }
+  }
+}
+declare module 'monaco-editor/editor/contrib/snippet/browser/snippetParser' {
+  export class SnippetParser {
+    parse(value: string): {toString: () => string}
+  }
+}

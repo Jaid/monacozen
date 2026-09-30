@@ -33,6 +33,9 @@
     "typecheck": "tsc --noEmit && tsc --noEmit --project test/tsconfig.json && tsc --noEmit --project packages/monaco-language-clank/tsconfig.json && tsc --noEmit --project packages/monaco-language-logsql/tsconfig.json && tsc --noEmit --project packages/monaco-language-metricsql/tsconfig.json && tsc --noEmit --project packages/vite-plugin-add-monaco-languages/tsconfig.json && tsc --noEmit --project packages/vite-plugin-lib-intermediate/tsconfig.json && tsc --noEmit --project packages/vite-plugin-omit-monaco-languages/tsconfig.json && tsc --noEmit --project packages/vite-plugin-override-monaco-themes/tsconfig.json && tsc --noEmit --project test-browser/tsconfig.json",
     "vite": "bun --bun node_modules/vite/dist/node/cli.js --configLoader native"
   },
+  "patchedDependencies": {
+    "monaco-editor@0.57.0": "patches/monaco-editor@0.57.0.patch"
+  },
   "dependencies": {
     "antimono": "0.1.0",
     "monaco-editor": "0.57.0",

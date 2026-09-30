@@ -133,6 +133,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "monaco-editor@0.57.0": "patches/monaco-editor@0.57.0.patch",
+  },
   "packages": {
     "@altano/repository-tools": ["@altano/repository-tools@2.1.1", "", {}, "sha512-YFVhwoSjwkERQoopw3lX/TaPIDud0m6ac/Z51FoQ3YEPf0OaxFxpofbcHO0E2mTJ0lvmuRArIMUP9Pz2jpTMhg=="],
 

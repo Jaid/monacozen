@@ -1,0 +1,31 @@
+diff --git a/esm/vs/editor/contrib/inlineCompletions/browser/controller/inlineCompletionsController.js b/esm/vs/editor/contrib/inlineCompletions/browser/controller/inlineCompletionsController.js
+index 6643f973bf39cc83b79859754a54426afcf1a010..fde85be7763d3adf36a23eb00159c759ff741316 100644
+--- a/esm/vs/editor/contrib/inlineCompletions/browser/controller/inlineCompletionsController.js
++++ b/esm/vs/editor/contrib/inlineCompletions/browser/controller/inlineCompletionsController.js
+@@ -1,6 +1,7 @@
+ import { alert } from '../../../../../base/browser/ui/aria/aria.js';
+ import { timeout } from '../../../../../base/common/async.js';
+ import { cancelOnDispose } from '../../../../../base/common/cancellation.js';
++import { isCancellationError } from '../../../../../base/common/errors.js';
+ import { createHotClass } from '../../../../../base/common/hotReloadHelpers.js';
+ import { Disposable, toDisposable } from '../../../../../base/common/lifecycle.js';
+ import '../../../../../base/common/observableInternal/index.js';
+@@ -309,8 +310,16 @@ let InlineCompletionsController = class InlineCompletionsController extends Disp
+             if (!state || !model) {
+                 return;
+             }
+-            await timeout(50, cancelOnDispose(store));
+-            await waitForState(this._suggestWidgetAdapter.selectedItem, isUndefined, () => false, cancelOnDispose(store));
++            try {
++                await timeout(50, cancelOnDispose(store));
++                await waitForState(this._suggestWidgetAdapter.selectedItem, isUndefined, () => false, cancelOnDispose(store));
++            } catch (error) {
++                // A newly typed/accepted suggestion cancels the previous announcement.
++                if (isCancellationError(error)) {
++                    return;
++                }
++                throw error;
++            }
+             model = this.model.get();
+             state = model?.state.get();
+             if (!state || !model) {
