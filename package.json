@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "10.11.0",
+    "eslint": "10.12.0",
     "eslint-config-jaid": "34.0.0",
     "fs-extra": "11.4.1",
     "monaco-language-clank": "workspace:*",
@@ -60,7 +60,7 @@
     "react-dom": "19.3.0",
     "tsconfig-jaid-react": "16.0.0",
     "typescript": "npm:typescript-classic@6.0.4",
-    "vite": "8.3.1",
+    "vite": "8.3.2",
     "vite-plugin-add-monaco-languages": "workspace:*",
     "vite-plugin-lib-intermediate": "workspace:*",
     "vite-plugin-omit-monaco-languages": "workspace:*",
