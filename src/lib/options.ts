@@ -37,6 +37,7 @@ export const defaultOptions = {
   stickyScroll: {enabled: false},
   tabSize: 2,
   wordWrap: 'on',
+  autoSurround: 'never',
 } satisfies MonacoOptions
 export const resolveMonacoOptions = (font: EditorFont = 'antimono', monaco?: MonacoOptions | true) => ({
   ...defaultOptions,
