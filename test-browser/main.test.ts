@@ -489,19 +489,44 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     }, aliasSchema)
     await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.message.includes("string"))')
     expect(await page.evaluate('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.code === "recursive-alias")')).toBe(false)
-    // Recursive aliases previously overflowed yaml-language-server's validation stack.
-    await page.evaluate(() => {
+    // Recursive aliases previously overflowed yaml-language-server in validation and completion paths.
+    await page.evaluate(schema => {
       const w = globalThis as unknown as {
-        editor: {setValue: (value: string) => void}
+        editor: {
+          focus: () => void
+          getAction: (id: string) => {run: () => Promise<void>}
+          setPosition: (position: {
+            column: number
+            lineNumber: number
+          }) => void
+          setValue: (value: string) => void
+        }
         setSchema: (schema: unknown) => void
       }
-      w.setSchema(undefined)
+      w.setSchema(schema)
       w.editor.setValue('entries: &loop\n  child: *loop\n')
-    })
+      w.editor.focus()
+    }, aliasSchema)
     await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.code === "recursive-alias")')
     const recursiveMarker = await page.evaluate('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).find(marker => marker.code === "recursive-alias")') as {message: string}
     expect(recursiveMarker.message).toContain('Recursive YAML alias *loop')
+    await page.evaluate(async () => {
+      const w = globalThis as unknown as {editor: {
+        getAction: (id: string) => {run: () => Promise<void>}
+        setPosition: (position: {
+          column: number
+          lineNumber: number
+        }) => void
+      }}
+      w.editor.setPosition({
+        lineNumber: 2,
+        column: 15,
+      })
+      await w.editor.getAction('editor.action.inlineSuggest.trigger').run()
+    })
+    await Bun.sleep(250)
     // Syntax validation remains active without an associated schema.
+    await page.evaluate('window.setSchema(undefined)')
     await page.evaluate(String.raw`window.editor.setValue("duplicate: true\nduplicate: false\n")`)
     await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.message.includes("unique"))')
     await page.evaluate(String.raw`window.editor.setValue("duplicate: true\n")`)

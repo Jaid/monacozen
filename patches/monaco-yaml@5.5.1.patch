@@ -1,5 +1,5 @@
 diff --git a/src/yaml.worker.ts b/src/yaml.worker.ts
-index e2a31fe6ca685a4c19e03d18116a36c4cd7bbbe7..7fa51f6ed9ffdb5ecf4a24161676ad66902321e0 100644
+index e2a31fe6ca685a4c19e03d18116a36c4cd7bbbe7..0eef502dd588ba5dc2ec8777389814bb1a08b32f 100644
 --- a/src/yaml.worker.ts
 +++ b/src/yaml.worker.ts
 @@ -22,6 +22,7 @@ import type { MonacoYamlOptions } from './index.js'
@@ -10,14 +10,19 @@ index e2a31fe6ca685a4c19e03d18116a36c4cd7bbbe7..7fa51f6ed9ffdb5ecf4a24161676ad66
  import { getLanguageService } from 'yaml-language-server/lib/esm/languageservice/yamlLanguageService.js'
  
  /**
-@@ -125,6 +126,37 @@ export interface YAMLWorker {
+@@ -125,6 +126,42 @@ export interface YAMLWorker {
    prepareRename: (uri: string, position: Position) => null | Range | undefined
  }
  
++
 +const getRecursiveAliasDiagnostics = (document: TextDocument): Diagnostic[] => {
++  const text = document.getText()
++  if (!(text.includes('&') && text.includes('*'))) {
++    return []
++  }
 +  const diagnostics: Diagnostic[] = []
 +  try {
-+    for (const yamlDocument of parseAllDocuments(document.getText())) {
++    for (const yamlDocument of parseAllDocuments(text)) {
 +      visit(yamlDocument, (_key, node, path) => {
 +        if (!isAlias(node)) {
 +          return
@@ -48,7 +53,19 @@ index e2a31fe6ca685a4c19e03d18116a36c4cd7bbbe7..7fa51f6ed9ffdb5ecf4a24161676ad66
  const telemetry: Telemetry = {
    send() {
      // Do nothing
-@@ -178,9 +210,12 @@ initialize<YAMLWorker, MonacoYamlOptions>(
+@@ -174,53 +211,64 @@ initialize<YAMLWorker, MonacoYamlOptions>(
+           }
+         }
+       }
++    const withNonRecursiveDocument =
++      <A extends unknown[], R>(fn: (document: TextDocument, ...args: A) => R) =>
++      withDocument((document, ...args: A) => {
++        if (getRecursiveAliasDiagnostics(document).length > 0) {
++          return undefined
++        }
++        return fn(document, ...args)
++      })
+ 
      ls.configure({ ...languageSettings, format: Boolean(format?.enable) })
  
      return {
@@ -62,21 +79,76 @@ index e2a31fe6ca685a4c19e03d18116a36c4cd7bbbe7..7fa51f6ed9ffdb5ecf4a24161676ad66
 +          : ls.doValidation(document, Boolean(languageSettings.isKubernetes))
 +      }),
  
-       doComplete: withDocument((document, position) =>
+-      doComplete: withDocument((document, position) =>
++      doComplete: withNonRecursiveDocument((document, position) =>
          ls.doComplete(document, position, Boolean(languageSettings.isKubernetes))
+       ),
+ 
+-      doDefinition: withDocument((document, position) =>
++      doDefinition: withNonRecursiveDocument((document, position) =>
+         ls.doDefinition(document, { position, textDocument: document })
+       ),
+ 
+-      doDocumentOnTypeFormatting: withDocument((document, position, ch, options) =>
++      doDocumentOnTypeFormatting: withNonRecursiveDocument((document, position, ch, options) =>
+         ls.doDocumentOnTypeFormatting(document, { ch, options, position, textDocument: document })
+       ),
+ 
+-      doHover: withDocument(ls.doHover),
++      doHover: withNonRecursiveDocument(ls.doHover),
+ 
+-      doRename: withDocument((document, position, newName) =>
++      doRename: withNonRecursiveDocument((document, position, newName) =>
+         ls.doRename(document, { newName, position, textDocument: document })
+       ),
+ 
+-      format: withDocument((document) => ls.doFormat(document, format)),
++      format: withNonRecursiveDocument((document) => ls.doFormat(document, format)),
+ 
+       resetSchema: ls.resetSchema,
+ 
+-      findDocumentSymbols: withDocument(ls.findDocumentSymbols2),
++      findDocumentSymbols: withNonRecursiveDocument(ls.findDocumentSymbols2),
+ 
+-      findLinks: withDocument(ls.findLinks),
++      findLinks: withNonRecursiveDocument(ls.findLinks),
+ 
+-      getCodeAction: withDocument((document, range, context) =>
++      getCodeAction: withNonRecursiveDocument((document, range, context) =>
+         ls.getCodeAction(document, { range, textDocument: document, context })
+       ),
+ 
+-      getCodeLens: withDocument(ls.getCodeLens),
++      getCodeLens: withNonRecursiveDocument(ls.getCodeLens),
+ 
+-      getFoldingRanges: withDocument((document) =>
++      getFoldingRanges: withNonRecursiveDocument((document) =>
+         ls.getFoldingRanges(document, { lineFoldingOnly: true })
+       ),
+ 
+-      getSelectionRanges: withDocument(ls.getSelectionRanges),
++      getSelectionRanges: withNonRecursiveDocument(ls.getSelectionRanges),
+ 
+-      prepareRename: withDocument((document, position) =>
++      prepareRename: withNonRecursiveDocument((document, position) =>
+         ls.prepareRename(document, { position, textDocument: document })
+       )
+     }
 diff --git a/yaml.worker.js b/yaml.worker.js
-index beade0d53c9867e63a9c8fb08f5f0ba9dc9808a5..b57fabd5bba76460d3c3366ef15a1358168a4876 100644
+index beade0d53c9867e63a9c8fb08f5f0ba9dc9808a5..7b428c2e797810f4ed60eccab15582fc060741ea 100644
 --- a/yaml.worker.js
 +++ b/yaml.worker.js
-@@ -11,6 +11,29 @@ var require_json_schema = __commonJS({
+@@ -11,6 +11,31 @@ var require_json_schema = __commonJS({
  });
  
  // src/yaml.worker.ts
 +import { isAlias as isMonacozenAlias, parseAllDocuments as parseMonacozenYamlDocuments, visit as visitMonacozenYamlDocument } from "yaml";
 +function getRecursiveAliasDiagnostics(document) {
++  const text = document.getText();
++  if (!(text.includes("&") && text.includes("*"))) return [];
 +  const diagnostics = [];
 +  try {
-+    for (const yamlDocument of parseMonacozenYamlDocuments(document.getText())) {
++    for (const yamlDocument of parseMonacozenYamlDocuments(text)) {
 +      visitMonacozenYamlDocument(yamlDocument, (_key, node, path) => {
 +        if (!isMonacozenAlias(node)) return;
 +        const target = node.resolve(yamlDocument);
@@ -98,17 +170,62 @@ index beade0d53c9867e63a9c8fb08f5f0ba9dc9808a5..b57fabd5bba76460d3c3366ef15a1358
  import { initialize } from "monaco-worker-manager/worker";
  import { TextDocument } from "vscode-languageserver-textdocument";
  
-@@ -9619,9 +9642,10 @@ initialize(
+@@ -9617,37 +9642,42 @@ initialize(
+         }
+       }
      };
++    const withNonRecursiveDocument = (fn) => withDocument((document, ...args) => {
++      if (getRecursiveAliasDiagnostics(document).length > 0) return;
++      return fn(document, ...args);
++    });
      ls.configure({ ...languageSettings, format: Boolean(format2?.enable) });
      return {
 -      doValidation: withDocument(
 -        (document) => ls.doValidation(document, Boolean(languageSettings.isKubernetes))
 -      ),
+-      doComplete: withDocument(
 +      doValidation: withDocument((document) => {
 +        const recursiveAliases = getRecursiveAliasDiagnostics(document);
 +        return recursiveAliases.length > 0 ? recursiveAliases : ls.doValidation(document, Boolean(languageSettings.isKubernetes));
 +      }),
-       doComplete: withDocument(
++      doComplete: withNonRecursiveDocument(
          (document, position) => ls.doComplete(document, position, Boolean(languageSettings.isKubernetes))
        ),
+-      doDefinition: withDocument(
++      doDefinition: withNonRecursiveDocument(
+         (document, position) => ls.doDefinition(document, { position, textDocument: document })
+       ),
+-      doDocumentOnTypeFormatting: withDocument(
++      doDocumentOnTypeFormatting: withNonRecursiveDocument(
+         (document, position, ch, options) => ls.doDocumentOnTypeFormatting(document, { ch, options, position, textDocument: document })
+       ),
+-      doHover: withDocument(ls.doHover),
+-      doRename: withDocument(
++      doHover: withNonRecursiveDocument(ls.doHover),
++      doRename: withNonRecursiveDocument(
+         (document, position, newName) => ls.doRename(document, { newName, position, textDocument: document })
+       ),
+-      format: withDocument((document) => ls.doFormat(document, format2)),
++      format: withNonRecursiveDocument((document) => ls.doFormat(document, format2)),
+       resetSchema: ls.resetSchema,
+-      findDocumentSymbols: withDocument(ls.findDocumentSymbols2),
+-      findLinks: withDocument(ls.findLinks),
+-      getCodeAction: withDocument(
++      findDocumentSymbols: withNonRecursiveDocument(ls.findDocumentSymbols2),
++      findLinks: withNonRecursiveDocument(ls.findLinks),
++      getCodeAction: withNonRecursiveDocument(
+         (document, range, context) => ls.getCodeAction(document, { range, textDocument: document, context })
+       ),
+-      getCodeLens: withDocument(ls.getCodeLens),
+-      getFoldingRanges: withDocument(
++      getCodeLens: withNonRecursiveDocument(ls.getCodeLens),
++      getFoldingRanges: withNonRecursiveDocument(
+         (document) => ls.getFoldingRanges(document, { lineFoldingOnly: true })
+       ),
+-      getSelectionRanges: withDocument(ls.getSelectionRanges),
+-      prepareRename: withDocument(
++      getSelectionRanges: withNonRecursiveDocument(ls.getSelectionRanges),
++      prepareRename: withNonRecursiveDocument(
+         (document, position) => ls.prepareRename(document, { position, textDocument: document })
+       )
+     };
