@@ -460,6 +460,47 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     await page.evaluate('window.editor.getAction("editor.action.formatDocument").run()')
     expect(await page.evaluate('window.editor.getValue()')).toBe(`${directive}\nname: Monacozen\nmode: safe\nenabled: true\n`)
     await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).length === 0')
+    // Normal aliases must keep full schema validation; only cycles are short-circuited.
+    const aliasSchema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        base: {$ref: '#/$defs/item'},
+        copy: {$ref: '#/$defs/item'},
+      },
+      $defs: {
+        item: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name'],
+          properties: {name: {type: 'string'}},
+        },
+      },
+    }
+    await page.evaluate(schema => {
+      const w = globalThis as unknown as {
+        editor: {setValue: (value: string) => void}
+        setLanguage: (language: string) => void
+        setSchema: (schema: unknown) => void
+      }
+      w.setLanguage('yaml')
+      w.setSchema(schema)
+      w.editor.setValue('base: &base\n  name: 42\ncopy: *base\n')
+    }, aliasSchema)
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.message.includes("string"))')
+    expect(await page.evaluate('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.code === "recursive-alias")')).toBe(false)
+    // Recursive aliases previously overflowed yaml-language-server's validation stack.
+    await page.evaluate(() => {
+      const w = globalThis as unknown as {
+        editor: {setValue: (value: string) => void}
+        setSchema: (schema: unknown) => void
+      }
+      w.setSchema(undefined)
+      w.editor.setValue('entries: &loop\n  child: *loop\n')
+    })
+    await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.code === "recursive-alias")')
+    const recursiveMarker = await page.evaluate('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).find(marker => marker.code === "recursive-alias")') as {message: string}
+    expect(recursiveMarker.message).toContain('Recursive YAML alias *loop')
     // Syntax validation remains active without an associated schema.
     await page.evaluate(String.raw`window.editor.setValue("duplicate: true\nduplicate: false\n")`)
     await page.waitForFunction('window.monaco.editor.getModelMarkers({owner: "yaml", resource: window.editor.getModel().uri}).some(marker => marker.message.includes("unique"))')

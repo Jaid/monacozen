@@ -134,6 +134,7 @@
     },
   },
   "patchedDependencies": {
+    "monaco-yaml@5.5.1": "patches/monaco-yaml@5.5.1.patch",
     "monaco-editor@0.57.0": "patches/monaco-editor@0.57.0.patch",
   },
   "packages": {

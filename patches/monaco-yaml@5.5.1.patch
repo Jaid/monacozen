@@ -1,0 +1,114 @@
+diff --git a/src/yaml.worker.ts b/src/yaml.worker.ts
+index e2a31fe6ca685a4c19e03d18116a36c4cd7bbbe7..7fa51f6ed9ffdb5ecf4a24161676ad66902321e0 100644
+--- a/src/yaml.worker.ts
++++ b/src/yaml.worker.ts
+@@ -22,6 +22,7 @@ import type { MonacoYamlOptions } from './index.js'
+ 
+ import { initialize } from 'monaco-worker-manager/worker'
+ import { TextDocument } from 'vscode-languageserver-textdocument'
++import { isAlias, parseAllDocuments, visit } from 'yaml'
+ import { getLanguageService } from 'yaml-language-server/lib/esm/languageservice/yamlLanguageService.js'
+ 
+ /**
+@@ -125,6 +126,37 @@ export interface YAMLWorker {
+   prepareRename: (uri: string, position: Position) => null | Range | undefined
+ }
+ 
++const getRecursiveAliasDiagnostics = (document: TextDocument): Diagnostic[] => {
++  const diagnostics: Diagnostic[] = []
++  try {
++    for (const yamlDocument of parseAllDocuments(document.getText())) {
++      visit(yamlDocument, (_key, node, path) => {
++        if (!isAlias(node)) {
++          return
++        }
++        const target = node.resolve(yamlDocument)
++        if (!target || !path.includes(target) || !node.range) {
++          return
++        }
++        const [start, end] = node.range
++        diagnostics.push({
++          code: 'recursive-alias',
++          message: `Recursive YAML alias ${String(node)} is not supported.`,
++          range: {
++            start: document.positionAt(start),
++            end: document.positionAt(end)
++          },
++          severity: 1,
++          source: 'YAML'
++        })
++      })
++    }
++  } catch {
++    // Let yaml-language-server report ordinary parse failures.
++  }
++  return diagnostics
++}
++
+ const telemetry: Telemetry = {
+   send() {
+     // Do nothing
+@@ -178,9 +210,12 @@ initialize<YAMLWorker, MonacoYamlOptions>(
+     ls.configure({ ...languageSettings, format: Boolean(format?.enable) })
+ 
+     return {
+-      doValidation: withDocument((document) =>
+-        ls.doValidation(document, Boolean(languageSettings.isKubernetes))
+-      ),
++      doValidation: withDocument((document) => {
++        const recursiveAliases = getRecursiveAliasDiagnostics(document)
++        return recursiveAliases.length > 0
++          ? recursiveAliases
++          : ls.doValidation(document, Boolean(languageSettings.isKubernetes))
++      }),
+ 
+       doComplete: withDocument((document, position) =>
+         ls.doComplete(document, position, Boolean(languageSettings.isKubernetes))
+diff --git a/yaml.worker.js b/yaml.worker.js
+index beade0d53c9867e63a9c8fb08f5f0ba9dc9808a5..b57fabd5bba76460d3c3366ef15a1358168a4876 100644
+--- a/yaml.worker.js
++++ b/yaml.worker.js
+@@ -11,6 +11,29 @@ var require_json_schema = __commonJS({
+ });
+ 
+ // src/yaml.worker.ts
++import { isAlias as isMonacozenAlias, parseAllDocuments as parseMonacozenYamlDocuments, visit as visitMonacozenYamlDocument } from "yaml";
++function getRecursiveAliasDiagnostics(document) {
++  const diagnostics = [];
++  try {
++    for (const yamlDocument of parseMonacozenYamlDocuments(document.getText())) {
++      visitMonacozenYamlDocument(yamlDocument, (_key, node, path) => {
++        if (!isMonacozenAlias(node)) return;
++        const target = node.resolve(yamlDocument);
++        if (!target || !path.includes(target) || !node.range) return;
++        const [start, end] = node.range;
++        diagnostics.push({
++          code: "recursive-alias",
++          message: `Recursive YAML alias ${String(node)} is not supported.`,
++          range: { start: document.positionAt(start), end: document.positionAt(end) },
++          severity: 1,
++          source: "YAML"
++        });
++      });
++    }
++  } catch {
++  }
++  return diagnostics;
++}
+ import { initialize } from "monaco-worker-manager/worker";
+ import { TextDocument } from "vscode-languageserver-textdocument";
+ 
+@@ -9619,9 +9642,10 @@ initialize(
+     };
+     ls.configure({ ...languageSettings, format: Boolean(format2?.enable) });
+     return {
+-      doValidation: withDocument(
+-        (document) => ls.doValidation(document, Boolean(languageSettings.isKubernetes))
+-      ),
++      doValidation: withDocument((document) => {
++        const recursiveAliases = getRecursiveAliasDiagnostics(document);
++        return recursiveAliases.length > 0 ? recursiveAliases : ls.doValidation(document, Boolean(languageSettings.isKubernetes));
++      }),
+       doComplete: withDocument(
+         (document, position) => ls.doComplete(document, position, Boolean(languageSettings.isKubernetes))
+       ),
