@@ -62,7 +62,7 @@ export const defaultOptions = {
   wrappingIndent: 'deepIndent',
   wrappingStrategy: 'advanced',
   lightbulb: {
-    enabled: 'off',
+    enabled: 'off' as editor.ShowLightbulbIconMode,
   },
   hover: {
     delay: 100,
