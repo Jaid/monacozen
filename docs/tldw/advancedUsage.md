@@ -61,3 +61,7 @@ Each definition has its own lazy chunk. Registration metadata is available when 
 The definitions provide syntax highlighting and basic editing configuration, not query execution, schema validation or a language server. LogsQL and MetricsQL cover their query operators, keywords, field or label names, calls, numeric values, durations, comments and quoted strings. Clank follows its whitespace-delimited format, including bare strings, special values, raw single-quoted strings and escaped double-quoted strings. It does not invent JSON commas, colons or comments.
 
 The Monaco build continues to exclude `abap`, `apex`, `lexon`, `sb` and `flow9`.
+
+### language services
+
+Syntax highlighting covers every bundled language. Language services (diagnostics, completion, hover documentation and formatting) are included for JSON and YAML. The TypeScript/JavaScript, CSS/SCSS/Less and HTML/Handlebars language services and their workers are omitted to keep the package small.

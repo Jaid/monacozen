@@ -6,6 +6,7 @@ import babelPlugin from '@rolldown/plugin-babel'
 import reactPlugin, {reactCompilerPreset} from '@vitejs/plugin-react'
 import addMonacoLanguagesPlugin from 'vite-plugin-add-monaco-languages'
 import libIntermediatePlugin from 'vite-plugin-lib-intermediate'
+import omitMonacoFeaturesPlugin from 'vite-plugin-omit-monaco-features'
 import omitMonacoLanguagesPlugin from 'vite-plugin-omit-monaco-languages'
 import overrideMonacoThemesPlugin from 'vite-plugin-override-monaco-themes'
 
@@ -54,6 +55,14 @@ const config: UserConfig = {
           extensions: ['.clank'],
           module: 'monaco-language-clank',
         },
+      ],
+    }),
+    // Syntax highlighting for these languages remains; only their language services and workers are dropped.
+    omitMonacoFeaturesPlugin({
+      features: [
+        'css',
+        'html',
+        'typescript',
       ],
     }),
     omitMonacoLanguagesPlugin({

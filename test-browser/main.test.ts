@@ -90,6 +90,7 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     const assets = await fs.readdir(join(packageFolder, 'assets'))
     const stylesheets = assets.filter(file => file.endsWith('.css'))
     expect(stylesheets).toHaveLength(2)
+    expect(assets.filter(file => /^(?:css|html|ts)\.worker-/u.test(file))).toEqual([])
     expect(stylesheets.some(file => file.startsWith('antimono-'))).toBe(true)
     expect(stylesheets.some(file => file.startsWith('monaco-'))).toBe(true)
     const entry = await fs.readFile(join(packageFolder, 'src/main.js'), 'utf8')
@@ -307,9 +308,11 @@ test('a clean consumer loads editors, styles and language grammars only on deman
     expect(jsonMessages).toContain('string')
     expect(jsonMessages).toContain('boolean')
     // The same prop is ignored when the active language has no schema service.
+    // TypeScript keeps its syntax highlighting, but its language service is omitted from the build.
     await page.evaluate('window.setLanguage("typescript"); window.editor.setValue(\'const count: number = "wrong"\')')
-    await page.waitForFunction('window.monaco.editor.getModelMarkers({resource: window.editor.getModel().uri}).some(marker => String(marker.code) === "2322")')
-    expect(requests.some(path => path.includes('ts.worker'))).toBe(true)
+    await page.waitForFunction('window.monaco.editor.tokenize(window.editor.getValue(), "typescript").flat().some(token => token.type === "keyword.ts")')
+    expect(await page.evaluate('"typescript" in window.monaco')).toBe(false)
+    expect(requests.some(path => path.includes('ts.worker'))).toBe(false)
     expect(requests.some(path => path.includes('yaml.worker'))).toBe(false)
     expect(schemaRequests).toEqual([])
     // The same in-memory schema is automatically applied after switching to YAML.

@@ -149,6 +149,10 @@ The definitions provide syntax highlighting and basic editing configuration, not
 
 The Monaco build continues to exclude `abap`, `apex`, `lexon`, `sb` and `flow9`.
 
+### language services
+
+Syntax highlighting covers every bundled language. Language services (diagnostics, completion, hover documentation and formatting) are included for JSON and YAML. The TypeScript/JavaScript, CSS/SCSS/Less and HTML/Handlebars language services and their workers are omitted to keep the package small.
+
 ## props
 
 option | type | default | info

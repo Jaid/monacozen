@@ -33,6 +33,7 @@
         "vite": "8.3.2",
         "vite-plugin-add-monaco-languages": "workspace:*",
         "vite-plugin-lib-intermediate": "workspace:*",
+        "vite-plugin-omit-monaco-features": "workspace:*",
         "vite-plugin-omit-monaco-languages": "workspace:*",
         "vite-plugin-override-monaco-themes": "workspace:*",
       },
@@ -102,6 +103,19 @@
         "vite": "8.3.2",
       },
       "peerDependencies": {
+        "vite": "^8.3.0",
+      },
+    },
+    "packages/vite-plugin-omit-monaco-features": {
+      "name": "vite-plugin-omit-monaco-features",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "1.4.2",
+        "monaco-editor": "0.57.0",
+        "vite": "8.3.2",
+      },
+      "peerDependencies": {
+        "monaco-editor": "0.57.0",
         "vite": "^8.3.0",
       },
     },
@@ -979,6 +993,8 @@
     "vite-plugin-add-monaco-languages": ["vite-plugin-add-monaco-languages@workspace:packages/vite-plugin-add-monaco-languages"],
 
     "vite-plugin-lib-intermediate": ["vite-plugin-lib-intermediate@workspace:packages/vite-plugin-lib-intermediate"],
+
+    "vite-plugin-omit-monaco-features": ["vite-plugin-omit-monaco-features@workspace:packages/vite-plugin-omit-monaco-features"],
 
     "vite-plugin-omit-monaco-languages": ["vite-plugin-omit-monaco-languages@workspace:packages/vite-plugin-omit-monaco-languages"],
 

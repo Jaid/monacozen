@@ -1,0 +1,26 @@
+{
+  "name": "vite-plugin-omit-monaco-features",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vite plugin for omitting selected Monaco language services and their workers",
+  "funding": "https://github.com/sponsors/Jaid",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jaid/monacozen.git",
+    "directory": "packages/vite-plugin-omit-monaco-features"
+  },
+  "main": "src/main.ts",
+  "scripts": {
+    "test": "bun test ./test"
+  },
+  "peerDependencies": {
+    "monaco-editor": "0.57.0",
+    "vite": "^8.3.0"
+  },
+  "devDependencies": {
+    "monaco-editor": "0.57.0",
+    "vite": "8.3.2",
+    "@types/bun": "1.4.2"
+  }
+}
