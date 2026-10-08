@@ -5,6 +5,8 @@ import {dirname, join, posix, relative} from 'node:path'
 
 import fs from 'fs-extra'
 
+import {extractInlineFonts, hashFont} from './extractInlineFonts.ts'
+
 export type VendoredDeclaration = {
   module: string
   output: string
@@ -20,6 +22,7 @@ export type VitePluginLibIntermediateOptions = {
   }>
   declarationTsconfig?: string
   entry?: string
+  extractFonts?: boolean
   outputFolder?: string
   vendoredDeclarations?: ReadonlyArray<VendoredDeclaration>
 }
@@ -40,6 +43,7 @@ const defaults = {
   }>,
   declarationTsconfig: 'tsconfig.intermediate.json',
   entry: 'src/main.tsx',
+  extractFonts: false,
   outputFolder: 'out/intermediate',
   vendoredDeclarations: [] as ReadonlyArray<VendoredDeclaration>,
 } satisfies Required<VitePluginLibIntermediateOptions>
@@ -134,6 +138,8 @@ const vitePluginLibIntermediate = (options: VitePluginLibIntermediateOptions = {
               chunkFileNames: 'assets/[name]-[hash].js',
               codeSplitting: resolvedOptions.codeSplitting,
               entryFileNames: 'src/main.js',
+              // Vite keeps whitespace in ES library output; strip it as well.
+              minify: true,
             },
           },
         },
@@ -143,6 +149,28 @@ const vitePluginLibIntermediate = (options: VitePluginLibIntermediateOptions = {
     generateBundle: {
       order: 'post',
       handler(_options, bundle) {
+        if (resolvedOptions.extractFonts) {
+          const emittedFonts = new Set<string>
+          for (const asset of Object.values(bundle)) {
+            if (asset.type !== 'asset' || !asset.fileName.endsWith('.css')) {
+              continue
+            }
+            const css = typeof asset.source === 'string' ? asset.source : Buffer.from(asset.source).toString('utf8')
+            asset.source = extractInlineFonts(css, (name, extension, source) => {
+              const fileName = `assets/${name}-${hashFont(source)}.${extension}`
+              if (!emittedFonts.has(fileName)) {
+                emittedFonts.add(fileName)
+                this.emitFile({
+                  type: 'asset',
+                  fileName,
+                  source,
+                })
+              }
+              const path = posix.relative(posix.dirname(asset.fileName), fileName)
+              return path.startsWith('.') ? path : `./${path}`
+            })
+          }
+        }
         for (const group of resolvedOptions.cssGroups) {
           const assets = Object.values(bundle).filter(asset => asset.type === 'asset').filter(asset => asset.fileName.endsWith('.css') && group.include.test(posix.basename(asset.fileName)))
           if (!assets.length) {

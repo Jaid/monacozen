@@ -1,5 +1,7 @@
 import type {UserConfig} from 'vite'
 
+import {join} from 'node:path'
+
 import babelPlugin from '@rolldown/plugin-babel'
 import reactPlugin, {reactCompilerPreset} from '@vitejs/plugin-react'
 import addMonacoLanguagesPlugin from 'vite-plugin-add-monaco-languages'
@@ -12,6 +14,8 @@ const config: UserConfig = {
     alias: {
       // monaco-worker-manager still imports the pre-0.57 worker entry path.
       'monaco-editor/esm/vs/editor/editor.worker.js': 'monaco-editor/editor/editor.worker.js',
+      // yaml-language-server loads Prettier’s estree plugin, but the YAML parser does not use it.
+      'prettier/plugins/estree': join(import.meta.dirname, 'src/runtime/prettierEstreeStub.ts'),
     },
   },
   plugins: [
@@ -83,6 +87,7 @@ const config: UserConfig = {
     }),
     libIntermediatePlugin({
       codeSplitting: true,
+      extractFonts: true,
       cssGroups: [{
         name: 'monaco',
         include: /^(?:editor|monaco)-.*\.css$/u,

@@ -5,6 +5,7 @@ import {join} from 'node:path'
 
 import fs from 'fs-extra'
 
+import {extractInlineFonts} from '../src/extractInlineFonts.ts'
 import vitePluginLibIntermediate from '../src/main.ts'
 
 describe('vitePluginLibIntermediate', () => {
@@ -22,6 +23,7 @@ describe('vitePluginLibIntermediate', () => {
           output: {
             codeSplitting: boolean
             entryFileNames: string
+            minify: boolean
           }
         }
       }
@@ -32,6 +34,7 @@ describe('vitePluginLibIntermediate', () => {
     expect(config.build.lib.entry).toBe('src/main.tsx')
     expect(config.build.rolldownOptions.output.entryFileNames).toBe('src/main.js')
     expect(config.build.rolldownOptions.output.codeSplitting).toBe(false)
+    expect(config.build.rolldownOptions.output.minify).toBe(true)
     expect(config.build.rolldownOptions.external('react')).toBe(true)
     expect(config.build.rolldownOptions.external('monaco-editor')).toBe(false)
     expect(config.build.rolldownOptions.external('not-a-dependency')).toBe(false)
@@ -72,5 +75,24 @@ describe('vitePluginLibIntermediate', () => {
       process.chdir(previousFolder)
       await fs.remove(folder)
     }
+  })
+  test('extracts base64 fonts with names from their font faces', () => {
+    const regular = Buffer.from('regular').toBase64()
+    const italic = Buffer.from('italic').toBase64()
+    const css = `@font-face{font-family:Antimono;src:url(data:font/woff2;base64,${regular}) format("woff2");font-style:normal;font-weight:400}@font-face{font-family:"Antimono";src:url("data:font/woff2;base64,${italic}");font-style:italic;font-weight:700}.icon{background:url(data:font/ttf;base64,${regular})}.image{background:url(data:image/png;base64,AAAA)}`
+    const emitted: Array<[string, string, string]> = []
+    const result = extractInlineFonts(css, (name, extension, source) => {
+      emitted.push([name, extension, Buffer.from(source).toString()])
+      return `./${name}.${extension}`
+    })
+    expect(emitted).toEqual([
+      ['antimono-400', 'woff2', 'regular'],
+      ['antimono-700-italic', 'woff2', 'italic'],
+      ['font', 'ttf', 'regular'],
+    ])
+    expect(result).toContain('url(./antimono-400.woff2) format("woff2")')
+    expect(result).toContain('url("./antimono-700-italic.woff2")')
+    expect(result).toContain('url(./font.ttf)')
+    expect(result).toContain('url(data:image/png;base64,AAAA)')
   })
 })
